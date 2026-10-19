@@ -345,7 +345,7 @@ public class MainActivity extends Activity {
         view.loadDataWithBaseURL("https://www.youtube.com/", page, "text/html", "UTF-8", HOME);
     }
 
-    // ---------- Video poster + microphone (voice search) ----------
+    // ---------- Video poster, microphone (voice search), protected video ----------
 
     static final class Chrome extends WebChromeClient {
         final MainActivity a;
@@ -360,12 +360,20 @@ public class MainActivity extends Activity {
         @Override
         public void onPermissionRequest(final PermissionRequest request) {
             boolean wantsMic = false;
+            boolean wantsDrm = false;
             for (String r : request.getResources()) {
                 if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) wantsMic = true;
+                if (PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID.equals(r)) wantsDrm = true;
             }
             String host = request.getOrigin() != null ? request.getOrigin().getHost() : null;
-            if (!wantsMic || !isYouTube(host)) {
+            if (!isYouTube(host) || (!wantsMic && !wantsDrm)) {
                 request.deny();
+                return;
+            }
+            // Protected (Widevine) videos, e.g. label music videos, need this or the player
+            // reports "This video format is not supported".
+            if (!wantsMic) {
+                request.grant(new String[]{PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID});
                 return;
             }
             if (a.pendingMic != null) {   // only one request waiting at a time

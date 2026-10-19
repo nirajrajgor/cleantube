@@ -245,6 +245,37 @@
     });
   }
 
+  // Frame-rate matching. Measure the playing video's frame rate from the gaps between
+  // its frames, then let the app switch the TV to a matching refresh rate (24 fps -> 24 Hz).
+  // Only on the watch page, so the short previews on the home screen never switch it.
+  if (Native && Native.matchFrameRate) {
+    var onWatchPage = function () { return /^#\/watch/.test(location.hash); };
+    var measureRun = 0;
+    var measureFps = function (video) {
+      if (!video.requestVideoFrameCallback) return;   // older web view: leave the TV alone
+      var run = ++measureRun, last = -1, gaps = [];
+      var onFrame = function (now, frame) {
+        if (run !== measureRun) return;
+        var gap = frame.mediaTime - last;
+        last = frame.mediaTime;
+        if (gap > 1 / 121 && gap < 1 / 11) gaps.push(gap);   // skip seeks and long stalls
+        if (gaps.length < 30) { video.requestVideoFrameCallback(onFrame); return; }
+        gaps.sort(function (a, b) { return a - b; });
+        // Middle value, so a few dropped frames don't change the answer.
+        if (onWatchPage()) { try { Native.matchFrameRate(1 / gaps[15]); } catch (e) {} }
+      };
+      video.requestVideoFrameCallback(onFrame);
+    };
+    document.addEventListener('playing', function (e) {
+      if (e.target instanceof HTMLVideoElement && onWatchPage()) measureFps(e.target);
+    }, true);
+    window.addEventListener('hashchange', function () {
+      if (onWatchPage()) return;
+      measureRun++;
+      try { Native.matchFrameRate(0); } catch (e) {}
+    });
+  }
+
   // "Exit YouTube?" -> Yes closes the app.
   window.close = function () {
     try { if (Native) Native.exitApp(); } catch (e) {}

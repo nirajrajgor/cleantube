@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
@@ -172,6 +173,55 @@ public class MainActivity extends Activity {
         public void exitApp() {
             a.runOnUiThread(a::finish);
         }
+
+        /** fps > 0: match the TV to this frame rate. fps <= 0: back to the TV's own setting. */
+        @JavascriptInterface
+        public void matchFrameRate(final float fps) {
+            a.runOnUiThread(() -> a.matchFrameRate(fps));
+        }
+    }
+
+    // ---------- Frame-rate matching ----------
+    // A 24 fps video on a 60 Hz screen shows frames for uneven times (3 refreshes, then 2),
+    // so slow pans judder. Switching the TV to a rate the video divides into evenly fixes it.
+    // Uses Display.Mode (Android 6+), so it works on every device this app supports.
+
+    void matchFrameRate(float fps) {
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        int want = fps > 0 ? pickMode(fps, lp.preferredDisplayModeId) : 0;
+        if (lp.preferredDisplayModeId == want) return;
+        lp.preferredDisplayModeId = want;   // 0 = no preference, the TV's normal mode
+        getWindow().setAttributes(lp);
+    }
+
+    /** Returns the display mode to ask for; current = the mode we asked for last (0 = none). */
+    private int pickMode(float fps, int current) {
+        Display display = getWindowManager().getDefaultDisplay();
+        Display.Mode[] modes = display.getSupportedModes();
+        Display.Mode active = display.getMode();
+        for (Display.Mode m : modes) if (m.getModeId() == current) active = m;
+
+        // Already a good fit (e.g. 30 fps on 60 Hz): don't switch, a switch blanks the screen.
+        if (frameError(active.getRefreshRate(), fps) < 0.0015f) return current;
+
+        int best = 0;
+        float bestError = 0.0015f;   // 0.15%: treats 23.976 and 24 as the same rate
+        for (Display.Mode m : modes) {
+            if (m.getPhysicalWidth() != active.getPhysicalWidth()
+                    || m.getPhysicalHeight() != active.getPhysicalHeight()) continue;
+            float err = frameError(m.getRefreshRate(), fps);
+            if (err < bestError) {
+                bestError = err;
+                best = m.getModeId();
+            }
+        }
+        return best;   // 0 when the TV has no matching mode: stay on its normal mode
+    }
+
+    /** How far the refresh rate is from a whole multiple of fps, as a fraction of the rate. */
+    private static float frameError(float hz, float fps) {
+        int k = Math.round(hz / fps);
+        return k < 1 ? 1f : Math.abs(hz - k * fps) / hz;
     }
 
     // ---------- Page loading ----------

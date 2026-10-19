@@ -164,6 +164,64 @@
     });
   } catch (e) {}
 
+  // YouTube's TV player tests the format check with impossible values (width=99999,
+  // framerate=9999, eotf=catavision, ...). A real TV app says no to those. The web view
+  // ignores the extra values and says yes to everything, so YouTube stops trusting it
+  // and hides 60fps and most HD formats. Answer like a TV app: check each value, then
+  // ask the web view about the plain type.
+  var TYPE_LIMITS = { width: 3840, height: 2160, framerate: 60, bitrate: 60000000, channels: 2 };
+  var TYPE_VALUES = {
+    eotf: ['bt709'],                       // SDR only
+    cryptoblockformat: ['subsample'],
+    'decode-to-texture': ['true', 'false'],
+    experimental: ['allowed'],
+    tunnelmode: ['false']
+  };
+  if (window.MediaSource && MediaSource.isTypeSupported) {
+    var origIsType = MediaSource.isTypeSupported;
+    MediaSource.isTypeSupported = function (type) {
+      try {
+        var parts = String(type).split(';');
+        var plain = [parts[0]];
+        for (var i = 1; i < parts.length; i++) {
+          var eq = parts[i].indexOf('=');
+          var k = parts[i].slice(0, eq < 0 ? undefined : eq).trim().toLowerCase();
+          var v = eq < 0 ? '' : parts[i].slice(eq + 1).trim().replace(/"/g, '').toLowerCase();
+          if (TYPE_LIMITS.hasOwnProperty(k)) {
+            var n = Number(v);
+            if (!(n >= 0) || n > TYPE_LIMITS[k]) return false;
+          } else if (TYPE_VALUES.hasOwnProperty(k)) {
+            if (TYPE_VALUES[k].indexOf(v) < 0) return false;
+          } else {
+            plain.push(parts[i]);
+          }
+        }
+        // 10-bit codecs are YouTube's HDR streams; they stutter badly in the web view.
+        if (/vp09\.0[23]\.|vp09\.\d\d\.\d\d\.1[02]|av01\.\d\.\d\d[MH]\.1[02]/i.test(type)) return false;
+        return origIsType.call(this, plain.join(';'));
+      } catch (e) {
+        return origIsType.apply(this, arguments);
+      }
+    };
+  }
+
+  // Measured on this TV: 4K at 24-30 fps and 1080p at 60 fps play smoothly; 1440p60
+  // drops ~6% of frames and 4K60 ~40%. Mark heavier formats "not smooth" (still
+  // supported) so Auto quality skips them. Saying "not supported" instead makes
+  // YouTube drop every 60 fps format.
+  if (navigator.mediaCapabilities && navigator.mediaCapabilities.decodingInfo) {
+    var mediaCaps = navigator.mediaCapabilities;
+    var origDecodingInfo = mediaCaps.decodingInfo;
+    mediaCaps.decodingInfo = function (config) {
+      var v = config && config.video;
+      var heavy = v && (v.framerate > 30 ? v.height > 1080 : v.height > 2160);
+      return origDecodingInfo.apply(this, arguments).then(function (r) {
+        if (!heavy || !r.supported) return r;
+        return { supported: true, smooth: false, powerEfficient: false, configuration: r.configuration };
+      });
+    };
+  }
+
   // No service worker, so every page load goes through the app (and this script).
   try {
     if (navigator.serviceWorker) {

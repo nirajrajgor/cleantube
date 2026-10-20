@@ -2,11 +2,6 @@
 
 YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads removed.
 
-## Disclaimer
-
-- CleanTube is a personal experiment.
-- Signing in can be risky.
-
 ## Why CleanTube
 
 - **Tiny.** The APK is under 40 KB.
@@ -96,6 +91,7 @@ CleanTube doesn't update itself. To update, install the new version the same way
 - **No HDR.** HDR videos play in SDR, because HDR streams stutter in the web view.
 - **Lower quality on weak TVs.** Auto quality skips 4K at 60fps and 1440p at 60fps, because many TVs drop frames on them. You can still pick them manually.
 - **Breakage.** A YouTube change can bring ads back or break playback until the app is updated.
+- **Account risk.** Google could flag accounts that use modified clients. CleanTube only changes YouTube pages, so Google's sign-in page loads untouched.
 
 ## Build from source
 

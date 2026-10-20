@@ -5,22 +5,18 @@ YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads remov
 ## Disclaimer
 
 - CleanTube is a personal experiment.
-- Signing in is at your own risk. YouTube could ban the account.
-- It can stop working whenever YouTube changes its site.
+- Signing in can be risky.
 
 ## Why CleanTube
 
 - **Tiny.** The APK is under 40 KB.
-- **Two permissions.** Internet, and the microphone for voice search. The microphone is only used after you allow it.
+- **Two permissions.** Internet, and the microphone for voice search.
 - **No tracking.** No analytics and no third-party libraries. It only opens YouTube and Google pages.
-- **Easy to check.** About 800 lines of code in 3 files.
 
 ## What it does
 
-- Opens youtube.com/tv, the same interface smart TVs use, full screen and built for a remote.
 - Removes video ads and ad tiles in the feeds.
 - Unlocks 60fps and HD video.
-- Plays protected videos, such as official music videos.
 - Switches the TV's refresh rate to match the video, when the TV supports it.
 - Voice search with the remote's microphone.
 

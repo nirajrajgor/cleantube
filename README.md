@@ -47,7 +47,7 @@ Then pick one way to install.
 
 ### Install manually
 
-1. Install the Downloader app. It's on the Amazon Appstore and Google Play.
+1. Install the **Downloader** app. It's on the Amazon Appstore and Google Play.
 2. Allow Downloader to install apps:
    - **Fire TV.** Settings > My Fire TV > Developer options > Install unknown apps, then turn on Downloader.
    - **Android TV and Google TV.** Settings > Apps > Security & restrictions > Unknown sources, then turn on Downloader.
@@ -55,12 +55,12 @@ Then pick one way to install.
 
 ### Install from an Android phone
 
-1. Install the Send Files to TV app on the phone and on the TV.
+1. Install the **Send Files to TV** app on the phone and on the TV.
 2. Download the APK on the phone, then send it to the TV with the app.
 3. On the TV, allow Send Files to TV to install apps, the same way as for Downloader above.
 4. Open the received APK and press Install.
 
-On Fire TV, the Easy Fire Tools phone app can send and install the APK in one step. It needs ADB debugging turned on, as in step 1 of the next section.
+On Fire TV, the **Easy Fire Tools** phone app can send and install the APK in one step. It needs ADB debugging turned on, as in step 1 of the next section.
 
 ### Install with an AI agent
 

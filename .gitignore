@@ -1,0 +1,13 @@
+# Secrets: signing key and its password
+.env
+*.keystore
+*.jks
+
+# Build output
+build/
+*.apk
+*.idsig
+
+# Local only
+archive/
+.DS_Store

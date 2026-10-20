@@ -4,7 +4,7 @@ YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads remov
 
 ## Disclaimer
 
-- CleanTube is a personal experiment. Use it at your own risk.
+- CleanTube is a personal experiment.
 - Signing in is at your own risk. YouTube could ban the account.
 - It can stop working whenever YouTube changes its site.
 

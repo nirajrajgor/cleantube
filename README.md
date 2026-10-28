@@ -84,14 +84,14 @@ CleanTube doesn't update itself. To update, install the new version the same way
 - Downloader keeps the link in its history, and the AI agent prompt works again as is.
 - Don't uninstall first. Installing over the old version keeps your settings and sign-in.
 
-## What might not work
+## Known limitations
 
-- **Limited testing.** It has been tested on a few TVs only, so some devices may behave differently.
+- **Limited testing.** Tested on Google TV so far. [Open an issue](https://github.com/nirajrajgor/cleantube/issues) if your TV behaves differently.
 - **24fps judder.** Most films are 24fps. If the TV has no 24Hz mode, slow camera pans can look slightly jerky. The TV's motion smoothing setting can hide this.
 - **No HDR.** HDR videos play in SDR, because HDR streams stutter in the web view.
 - **Lower quality on weak TVs.** Auto quality skips 4K at 60fps and 1440p at 60fps, because many TVs drop frames on them. You can still pick them manually.
 - **Breakage.** A YouTube change can bring ads back or break playback until the app is updated.
-- **Account risk.** Google could flag accounts that use modified clients. CleanTube only changes YouTube pages, so Google's sign-in page loads untouched.
+- **Account risk.** If you sign in, Google could flag your account for using a modified client. Watching without signing in carries no account risk.
 
 ## Build from source
 

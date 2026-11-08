@@ -276,6 +276,64 @@
     });
   }
 
+  // ---------- 4. Phone remote ----------
+  // The app's phone page plays videos here by changing the address, the same way
+  // YouTube's own TV app opens a video. When a video ends, the app plays the next one.
+  var watchId = function () {
+    var m = /^#\/watch.*?[?&]v=([\w-]{11})/.exec(location.hash);
+    return m ? m[1] : '';
+  };
+  var mainVideo = function () {
+    var vs = document.querySelectorAll('video');
+    for (var i = 0; i < vs.length; i++) if (vs[i].currentSrc) return vs[i];
+    return vs[0] || null;
+  };
+  window.__ctRemote = {
+    play: function (id) { location.hash = '#/watch?v=' + id; },
+    pause: function () { var v = mainVideo(); if (v) v.pause(); },
+    resume: function () { var v = mainVideo(); if (v) v.play(); },
+    seek: function (t) {
+      var v = mainVideo();
+      if (!v || !isFinite(t)) return;
+      var end = isFinite(v.duration) ? v.duration - 0.5 : t;
+      v.currentTime = Math.max(0, Math.min(t, end));
+    }
+  };
+  if (Native && Native.videoEnded) {
+    // When a queued video ends, open the next one in the same moment. Stopping the
+    // event here keeps YouTube from showing its home screen in between. replace()
+    // keeps Back from stepping through every song of the queue.
+    document.addEventListener('ended', function (e) {
+      if (!(e.target instanceof HTMLVideoElement)) return;
+      var id = watchId(), next = '';
+      if (!id) return;
+      try { next = String(Native.videoEnded(id) || ''); } catch (err) {}
+      if (!/^[\w-]{11}$/.test(next)) return;
+      e.stopImmediatePropagation();
+      location.replace('#/watch?v=' + next);
+    }, true);
+    // If YouTube's autoplay replaced a queued song at its end, the app answers with
+    // the next queued song, and we open that instead.
+    window.addEventListener('hashchange', function () {
+      var next = '';
+      try { next = String(Native.watching(watchId()) || ''); } catch (err) {}
+      if (/^[\w-]{11}$/.test(next)) location.replace('#/watch?v=' + next);
+    });
+    // Tell the app where the video is, only when that changes course. Phones work out
+    // the position in between, so nothing runs on every frame or every second.
+    var report = function (e) {
+      var v = e.target;
+      if (!(v instanceof HTMLVideoElement) || !watchId()) return;
+      try {
+        Native.progress(v.currentTime || 0, isFinite(v.duration) ? v.duration : 0,
+          v.paused, !v.paused && v.readyState > 2, v.playbackRate || 1);
+      } catch (err) {}
+    };
+    ['playing', 'pause', 'seeked', 'waiting', 'durationchange', 'ratechange'].forEach(function (t) {
+      document.addEventListener(t, report, true);
+    });
+  }
+
   // "Exit YouTube?" -> Yes closes the app.
   window.close = function () {
     try { if (Native) Native.exitApp(); } catch (e) {}

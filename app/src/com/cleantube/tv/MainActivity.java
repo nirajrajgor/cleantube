@@ -9,7 +9,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Display;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
@@ -21,15 +23,21 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -39,7 +47,7 @@ import java.util.Map;
  * CleanTube: YouTube's own TV interface (youtube.com/tv) in a full-screen web view,
  * with a small script that removes ads. Nothing else.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements PhoneRemote.Player {
 
     private static final String HOME = "https://www.youtube.com/tv";
     private static final int MIC_REQUEST = 1;
@@ -50,6 +58,9 @@ public class MainActivity extends Activity {
     PermissionRequest pendingMic;
     /** True once YouTube's TV page has loaded (not offline/error/loading). */
     volatile boolean pageReady;
+    PhoneRemote remote;
+    TextView badge;
+    boolean onWatchPage;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -63,7 +74,23 @@ public class MainActivity extends Activity {
         web.setBackgroundColor(Color.BLACK);
         web.setFocusable(true);
         web.setFocusableInTouchMode(true);
-        setContentView(web);
+
+        // The phone remote's address, in a corner of the screen while browsing (not watching).
+        badge = new TextView(this);
+        badge.setTextColor(Color.WHITE);
+        badge.setTextSize(14);
+        badge.setBackgroundColor(0xCC000000);
+        int pad = dp(8);
+        badge.setPadding(pad * 2, pad, pad * 2, pad);
+        badge.setVisibility(android.view.View.GONE);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.END);
+        lp.setMargins(0, 0, dp(32), dp(24));
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web);
+        root.addView(badge, lp);
+        setContentView(root);
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -86,6 +113,66 @@ public class MainActivity extends Activity {
 
         if (state == null || web.restoreState(state) == null) web.loadUrl(HOME);
         web.requestFocus();
+
+        remote = new PhoneRemote(this, this, readAsset("remote.html"));
+        remote.start();
+    }
+
+    // ---------- Phone remote ----------
+
+    @Override
+    public void playVideo(final String id) {
+        runOnUiThread(() -> {
+            if (web == null) return;
+            // id is checked to be 11 safe characters before it gets here.
+            if (pageReady) web.evaluateJavascript("window.__ctRemote&&__ctRemote.play('" + id + "')", null);
+            else web.loadUrl(HOME + "#/watch?v=" + id);
+        });
+    }
+
+    @Override
+    public void pauseVideo(final boolean pause) {
+        runOnUiThread(() -> {
+            if (web != null) web.evaluateJavascript(
+                    "window.__ctRemote&&__ctRemote." + (pause ? "pause()" : "resume()"), null);
+        });
+    }
+
+    @Override
+    public void seekVideo(final double seconds) {
+        runOnUiThread(() -> {
+            if (web != null) web.evaluateJavascript(
+                    "window.__ctRemote&&__ctRemote.seek(" + seconds + ")", null);
+        });
+    }
+
+    @Override
+    public void remoteReady() {
+        runOnUiThread(this::updateBadge);
+    }
+
+    void updateBadge() {
+        String ip = localIp();
+        boolean show = remote != null && remote.port > 0 && ip != null && !onWatchPage;
+        if (show) badge.setText("Phone remote: " + ip + ":" + remote.port);
+        badge.setVisibility(show ? android.view.View.VISIBLE : android.view.View.GONE);
+    }
+
+    /** The TV's address on the home network, e.g. 192.168.0.3. Needs no extra permission. */
+    static String localIp() {
+        try {
+            for (NetworkInterface n : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!n.isUp() || n.isLoopback()) continue;
+                for (InetAddress a : Collections.list(n.getInetAddresses())) {
+                    if (a instanceof Inet4Address && a.isSiteLocalAddress()) return a.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
     // Pretend to be a Cobalt TV app, the same way VacuumTube does on desktop.
@@ -138,6 +225,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         web.onResume();
+        updateBadge();   // the TV may have joined another network meanwhile
     }
 
     @Override
@@ -148,6 +236,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (remote != null) remote.stop();
         if (web != null) {
             web.destroy();
             web = null;
@@ -167,6 +256,31 @@ public class MainActivity extends Activity {
                 if (playing) a.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else a.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             });
+        }
+
+        /** The watch page's video started, paused, buffered or jumped. */
+        @JavascriptInterface
+        public void progress(double pos, double dur, boolean paused, boolean advancing, double rate) {
+            if (a.remote != null) a.remote.onProgress(pos, dur, paused, advancing, rate);
+        }
+
+        /** A video finished playing. Returns the next queued video to open, or "". */
+        @JavascriptInterface
+        public String videoEnded(String id) {
+            return a.remote != null && id != null ? a.remote.onEnded(id) : "";
+        }
+
+        /**
+         * The TV page changed; id is the video being watched, or "" when not on a watch page.
+         * Returns a queued video for the page to open instead, or "".
+         */
+        @JavascriptInterface
+        public String watching(String id) {
+            a.runOnUiThread(() -> {
+                a.onWatchPage = id != null && !id.isEmpty();
+                a.updateBadge();
+            });
+            return a.remote != null && id != null ? a.remote.onWatching(id) : "";
         }
 
         @JavascriptInterface

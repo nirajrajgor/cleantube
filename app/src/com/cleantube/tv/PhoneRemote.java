@@ -139,11 +139,19 @@ final class PhoneRemote {
                 path = path.substring(0, q);
             }
             int len = 0;
+            String host = null, origin = null;
             for (String l : lines) {
                 int c = l.indexOf(':');
-                if (c > 0 && l.substring(0, c).trim().equalsIgnoreCase("Content-Length")) {
-                    len = Integer.parseInt(l.substring(c + 1).trim());
-                }
+                if (c <= 0) continue;
+                String name = l.substring(0, c).trim();
+                String value = l.substring(c + 1).trim();
+                if (name.equalsIgnoreCase("Content-Length")) len = Integer.parseInt(value);
+                else if (name.equalsIgnoreCase("Host")) host = value;
+                else if (name.equalsIgnoreCase("Origin")) origin = value;
+            }
+            if (!allowed(host, origin)) {
+                send(sock, 403, "text/plain", "Forbidden");
+                return;
             }
             if (len < 0 || len > 65536) {
                 send(sock, 413, "text/plain", "Too large");
@@ -185,6 +193,23 @@ final class PhoneRemote {
         } catch (Exception ignored) {
             // A bad request from one phone must never affect the TV.
         }
+    }
+
+    /**
+     * Blocks other websites from driving the TV. A page on any device on the Wi-Fi
+     * could otherwise send commands here.
+     * Host must be an IP address, which stops DNS rebinding, where an attacker's
+     * domain name is pointed at the TV. Browsers send Origin with every POST and
+     * cross-site request, so it must match the remote page itself. Scripts and apps
+     * send no Origin and still work.
+     */
+    static boolean allowed(String host, String origin) {
+        if (host != null) {
+            String name = host.startsWith("[") ? "[" : host.replaceFirst(":\\d+$", "");
+            if (!name.equals("[") && !name.equals("localhost")
+                    && !name.matches("\\d{1,3}(\\.\\d{1,3}){3}")) return false;
+        }
+        return origin == null || (host != null && origin.equals("http://" + host));
     }
 
     /**

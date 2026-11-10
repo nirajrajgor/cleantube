@@ -4,9 +4,9 @@ YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads remov
 
 ## Why CleanTube
 
-- **Tiny.** The APK is under 40 KB.
-- **Two permissions.** Internet, and the microphone for voice search.
-- **No tracking.** No analytics and no third-party libraries. It only opens YouTube and Google pages.
+- **Tiny.** The APK is under 70 KB.
+- **Three permissions.** Internet, the microphone for voice search, and installing its own updates.
+- **No tracking.** No analytics and no third-party libraries. It only connects to YouTube, Google, and GitHub for updates.
 
 ## What it does
 
@@ -14,6 +14,19 @@ YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads remov
 - Unlocks 60fps and HD video.
 - Switches the TV's refresh rate to match the video, when the TV supports it.
 - Voice search with the remote's microphone.
+- Phone remote: search, queue and playlists from your phone's browser.
+
+## Phone remote
+
+Open the address shown in the TV's corner in your phone's browser. The phone and TV must be on the same Wi-Fi.
+
+<img src="docs/phone-remote.png" width="300" alt="Phone remote showing a queue of five videos, one playing on the TV">
+
+- Search YouTube and queue videos. The TV plays them in order.
+- Reorder, pause, seek, and save the queue as a playlist.
+- Get suggestions based on the queue.
+
+No app or login needed. Anyone on your Wi-Fi can use it. Playlists are saved on the TV.
 
 ## Supported devices
 
@@ -78,11 +91,11 @@ The agent finds the TV, installs the app and opens it. If it can't find the TV, 
 
 ### Updating
 
-CleanTube doesn't update itself. To update, install the new version the same way you installed it:
+When a new version is out, CleanTube shows Android's install prompt when it opens. Press Install, then open CleanTube again. The phone remote's Settings tab can also check and install.
 
-- The download link always points to the newest version.
-- Downloader keeps the link in its history, and the AI agent prompt works again as is.
-- Don't uninstall first. Installing over the old version keeps your settings and sign-in.
+The first time, Android asks once to allow installs from CleanTube. Turn it on, press Back, then press Install.
+
+Version 1.0 can't update itself. Install 1.1 the same way you installed CleanTube. Installing over it keeps your settings.
 
 ## Known limitations
 

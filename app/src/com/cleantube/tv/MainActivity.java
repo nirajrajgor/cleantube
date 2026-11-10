@@ -63,6 +63,7 @@ public class MainActivity extends Activity implements PhoneRemote.Player, Update
     Updater updater;
     TextView badge;
     boolean onWatchPage;
+    String ip;             // the TV's Wi-Fi address, looked up on start and resume
     boolean backPressed;   // saw the Back press, so its release is ours
 
     @Override
@@ -117,9 +118,8 @@ public class MainActivity extends Activity implements PhoneRemote.Player, Update
         if (state == null || web.restoreState(state) == null) web.loadUrl(HOME);
         web.requestFocus();
 
-        remote = new PhoneRemote(this, this, readAsset("remote.html"));
         updater = new Updater(this, this);
-        remote.updater = updater;
+        remote = new PhoneRemote(this, this, updater, readAsset("remote.html"));
         remote.start();
         updater.check(true);
     }
@@ -158,37 +158,38 @@ public class MainActivity extends Activity implements PhoneRemote.Player, Update
 
     @Override
     public void playVideo(final String id) {
+        // id is checked to be 11 safe characters before it gets here.
         runOnUiThread(() -> {
             if (web == null) return;
-            // id is checked to be 11 safe characters before it gets here.
-            if (pageReady) web.evaluateJavascript("window.__ctRemote&&__ctRemote.play('" + id + "')", null);
+            if (pageReady) remoteCall("play('" + id + "')");
             else web.loadUrl(HOME + "#/watch?v=" + id);
         });
     }
 
     @Override
     public void pauseVideo(final boolean pause) {
-        runOnUiThread(() -> {
-            if (web != null) web.evaluateJavascript(
-                    "window.__ctRemote&&__ctRemote." + (pause ? "pause()" : "resume()"), null);
-        });
+        runOnUiThread(() -> remoteCall(pause ? "pause()" : "resume()"));
     }
 
     @Override
     public void seekVideo(final double seconds) {
-        runOnUiThread(() -> {
-            if (web != null) web.evaluateJavascript(
-                    "window.__ctRemote&&__ctRemote.seek(" + seconds + ")", null);
-        });
+        runOnUiThread(() -> remoteCall("seek(" + seconds + ")"));
+    }
+
+    /** Runs a playback call from inject.js on the TV page. UI thread only. */
+    private void remoteCall(String call) {
+        if (web != null) web.evaluateJavascript("window.__ctRemote&&__ctRemote." + call, null);
     }
 
     @Override
     public void remoteReady() {
-        runOnUiThread(this::updateBadge);
+        runOnUiThread(() -> {
+            ip = localIp();
+            updateBadge();
+        });
     }
 
     void updateBadge() {
-        String ip = localIp();
         boolean show = remote != null && remote.port > 0 && ip != null && !onWatchPage;
         if (show) badge.setText("Phone remote: " + ip + ":" + remote.port);
         badge.setVisibility(show ? android.view.View.VISIBLE : android.view.View.GONE);
@@ -266,7 +267,8 @@ public class MainActivity extends Activity implements PhoneRemote.Player, Update
     protected void onResume() {
         super.onResume();
         web.onResume();
-        updateBadge();   // the TV may have joined another network meanwhile
+        ip = localIp();   // the TV may have joined another network meanwhile
+        updateBadge();
     }
 
     @Override
@@ -318,8 +320,10 @@ public class MainActivity extends Activity implements PhoneRemote.Player, Update
          */
         @JavascriptInterface
         public String watching(String id) {
+            final boolean watch = id != null && !id.isEmpty();
             a.runOnUiThread(() -> {
-                a.onWatchPage = id != null && !id.isEmpty();
+                if (a.onWatchPage == watch) return;
+                a.onWatchPage = watch;
                 a.updateBadge();
             });
             return a.remote != null && id != null ? a.remote.onWatching(id) : "";

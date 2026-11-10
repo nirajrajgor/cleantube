@@ -17,7 +17,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -144,20 +143,34 @@ final class Updater {
         return status.equals("checking") || status.equals("downloading");
     }
 
+    /** Moves to a busy status unless already busy, in one step, so two taps can't both start. */
+    private boolean start(String busyStatus) {
+        synchronized (this) {
+            if (busy()) return false;
+            status = busyStatus;
+            progress = 0;
+            error = "";
+        }
+        listener.updateChanged(this);
+        return true;
+    }
+
     /**
      * Asks GitHub for the latest release. Runs in the background.
      * auto: on app start. A new version then goes straight to Android's install prompt,
      * unless the user skipped it. The phone's "Check now" only reports.
      */
     void check(final boolean auto) {
-        if (busy()) return;
-        set("checking", 0, "");
+        if (!start("checking")) return;
         worker.execute(() -> {
             try {
                 HttpURLConnection c = open(LATEST);
                 c.setRequestProperty("Accept", "application/vnd.github+json");
                 if (c.getResponseCode() != 200) throw new IOException("GitHub answered " + c.getResponseCode());
-                JSONObject r = new JSONObject(read(c.getInputStream()));
+                JSONObject r;
+                try (InputStream in = c.getInputStream()) {
+                    r = new JSONObject(new String(MainActivity.readAll(in), "UTF-8"));
+                }
                 String tag = r.optString("tag_name").replaceFirst("^[vV]", "");
                 String url = "";
                 JSONArray assets = r.optJSONArray("assets");
@@ -215,8 +228,7 @@ final class Updater {
                 prefs.edit().remove("pending").apply();
             }
         }
-        set("downloading", 0, "");
-        worker.execute(() -> download(url));
+        if (start("downloading")) worker.execute(() -> download(url));
     }
 
     private boolean allowed() {
@@ -273,16 +285,6 @@ final class Updater {
         c.setReadTimeout(20000);
         c.setRequestProperty("User-Agent", "CleanTube");
         return c;
-    }
-
-    private static String read(InputStream in) throws IOException {
-        try (InputStream i = in) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = i.read(buf)) > 0) out.write(buf, 0, n);
-            return out.toString("UTF-8");
-        }
     }
 
     /** Compares versions like "1.10" and "1.9" by number, part by part. */

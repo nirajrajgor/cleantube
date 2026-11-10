@@ -47,6 +47,9 @@ final class PhoneRemote {
     }
 
     private static final int FIRST_PORT = 8080;
+    // Commands that change the queue or playlists, so they are written to storage.
+    private static final Set<String> SAVED = new HashSet<>(java.util.Arrays.asList(
+            "add", "remove", "move", "save", "playPlaylist", "deletePlaylist"));
     private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
     private static final Charset UTF8 = Charset.forName("UTF-8");
     // Signed-out search through YouTube's web API. No cookies are sent, so no account is used.
@@ -67,7 +70,7 @@ final class PhoneRemote {
     };
     private volatile ServerSocket server;
     volatile int port;
-    volatile Updater updater;
+    private final Updater updater;
 
     // Guarded by this.
     private JSONArray queue;
@@ -82,8 +85,9 @@ final class PhoneRemote {
     private long posAt;
     private long version;          // bumped on every change; phones listening get the new state
 
-    PhoneRemote(Context context, Player player, String page) {
+    PhoneRemote(Context context, Player player, Updater updater, String page) {
         this.player = player;
+        this.updater = updater;
         this.page = page;
         prefs = context.getSharedPreferences("remote", Context.MODE_PRIVATE);
         queue = readArray("queue");
@@ -293,21 +297,19 @@ final class PhoneRemote {
                 lists.put(new JSONObject().put("name", p.getString("name"))
                         .put("count", p.getJSONArray("items").length()));
             }
-            double now = pos;
-            if (advancing) now += (SystemClock.elapsedRealtime() - posAt) / 1000.0 * rate;
-            if (dur > 0 && now > dur) now = dur;
             return new JSONObject().put("queue", queue).put("current", current)
                     .put("paused", paused).put("playlists", lists)
-                    .put("pos", now).put("dur", dur).put("advancing", advancing && current >= 0)
+                    .put("pos", position()).put("dur", dur).put("advancing", advancing && current >= 0)
                     .put("rate", rate)
-                    .put("update", updater != null ? updater.state() : null).toString();
+                    .put("update", updater.state()).toString();
         } catch (JSONException e) {
             return "{}";
         }
     }
 
     private synchronized String command(JSONObject c) throws JSONException {
-        switch (c.optString("action")) {
+        String action = c.optString("action");
+        switch (action) {
             case "add": {
                 JSONObject v = cleanVideo(c.optJSONObject("video"));
                 if (v != null) queue.put(v);
@@ -337,7 +339,7 @@ final class PhoneRemote {
             case "pause":
             case "resume":
                 if (current < 0) break;
-                paused = c.optString("action").equals("pause");
+                paused = action.equals("pause");
                 player.pauseVideo(paused);
                 break;
             case "seek": {
@@ -372,10 +374,10 @@ final class PhoneRemote {
                 break;
             }
             case "checkUpdate":
-                if (updater != null) updater.check(false);
+                updater.check(false);
                 break;
             case "installUpdate":
-                if (updater != null) updater.install();
+                updater.install();
                 break;
             case "deletePlaylist":
                 removePlaylist(c.optString("name"));
@@ -383,8 +385,10 @@ final class PhoneRemote {
             default:
                 break;
         }
-        prefs.edit().putString("queue", queue.toString())
-                .putString("playlists", playlists.toString()).apply();
+        if (SAVED.contains(action)) {
+            prefs.edit().putString("queue", queue.toString())
+                    .putString("playlists", playlists.toString()).apply();
+        }
         changed();
         return state();
     }
@@ -405,7 +409,7 @@ final class PhoneRemote {
         paused = false;
         pos = dur = 0;
         advancing = false;
-        playStarted = System.currentTimeMillis();
+        playStarted = SystemClock.elapsedRealtime();
     }
 
     private String currentId() {
@@ -474,7 +478,7 @@ final class PhoneRemote {
     synchronized String onWatching(String id) {
         // Right after we start a video, YouTube can still pass through other pages
         // (e.g. home after the previous video ends). Give it a few seconds.
-        if (System.currentTimeMillis() - playStarted < 5000) return "";
+        if (SystemClock.elapsedRealtime() - playStarted < 5000) return "";
         if (current < 0 || id.equals(currentId())) return "";
         if (!id.isEmpty() && nearEnd() && inQueue(current + 1)) {
             select(current + 1);
@@ -489,8 +493,13 @@ final class PhoneRemote {
     /** True when our song was in its last 30 seconds, where YouTube shows "Up next". */
     private boolean nearEnd() {
         if (dur <= 0) return false;
+        return dur - position() <= 30;
+    }
+
+    /** Where the video is now: the last reported position plus the time it has been playing. */
+    private double position() {
         double now = pos + (advancing ? (SystemClock.elapsedRealtime() - posAt) / 1000.0 * rate : 0);
-        return dur - now <= 30;
+        return dur > 0 && now > dur ? dur : now;
     }
 
     /** The video on the watch page started, stopped, buffered or jumped. */

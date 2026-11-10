@@ -20,6 +20,8 @@ YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads remov
 
 Open the address shown in the TV's corner in your phone's browser. The phone and TV must be on the same Wi-Fi.
 
+<img src="docs/phone-remote.png" width="300" alt="Phone remote showing a queue of five videos, one playing on the TV">
+
 - Search YouTube and queue videos. The TV plays them in order.
 - Reorder, pause, seek, and save the queue as a playlist.
 - Get suggestions based on the queue.

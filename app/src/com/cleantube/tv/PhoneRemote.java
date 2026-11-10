@@ -67,6 +67,7 @@ final class PhoneRemote {
     };
     private volatile ServerSocket server;
     volatile int port;
+    volatile Updater updater;
 
     // Guarded by this.
     private JSONArray queue;
@@ -242,6 +243,11 @@ final class PhoneRemote {
         notifyAll();
     }
 
+    /** Something outside the queue changed, like the update status: tell the phones. */
+    synchronized void refresh() {
+        changed();
+    }
+
     private static String readHead(InputStream in) throws IOException {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         int state = 0;
@@ -293,7 +299,8 @@ final class PhoneRemote {
             return new JSONObject().put("queue", queue).put("current", current)
                     .put("paused", paused).put("playlists", lists)
                     .put("pos", now).put("dur", dur).put("advancing", advancing && current >= 0)
-                    .put("rate", rate).toString();
+                    .put("rate", rate)
+                    .put("update", updater != null ? updater.state() : null).toString();
         } catch (JSONException e) {
             return "{}";
         }
@@ -364,6 +371,12 @@ final class PhoneRemote {
                 playAt(0);
                 break;
             }
+            case "checkUpdate":
+                if (updater != null) updater.check(false);
+                break;
+            case "installUpdate":
+                if (updater != null) updater.install();
+                break;
             case "deletePlaylist":
                 removePlaylist(c.optString("name"));
                 break;

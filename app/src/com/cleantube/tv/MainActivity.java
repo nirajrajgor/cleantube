@@ -2,6 +2,7 @@ package com.cleantube.tv;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -47,7 +48,7 @@ import java.util.Map;
  * CleanTube: YouTube's own TV interface (youtube.com/tv) in a full-screen web view,
  * with a small script that removes ads. Nothing else.
  */
-public class MainActivity extends Activity implements PhoneRemote.Player {
+public class MainActivity extends Activity implements PhoneRemote.Player, Updater.Listener {
 
     private static final String HOME = "https://www.youtube.com/tv";
     private static final int MIC_REQUEST = 1;
@@ -59,8 +60,10 @@ public class MainActivity extends Activity implements PhoneRemote.Player {
     /** True once YouTube's TV page has loaded (not offline/error/loading). */
     volatile boolean pageReady;
     PhoneRemote remote;
+    Updater updater;
     TextView badge;
     boolean onWatchPage;
+    boolean backPressed;   // saw the Back press, so its release is ours
 
     @Override
     protected void onCreate(Bundle state) {
@@ -115,7 +118,40 @@ public class MainActivity extends Activity implements PhoneRemote.Player {
         web.requestFocus();
 
         remote = new PhoneRemote(this, this, readAsset("remote.html"));
+        updater = new Updater(this, this);
+        remote.updater = updater;
         remote.start();
+        updater.check(true);
+    }
+
+    // ---------- Updates ----------
+
+    @Override
+    public void updateChanged(Updater u) {
+        if (remote != null) remote.refresh();
+    }
+
+    @Override
+    public void explainSetup(Updater u) {
+        runOnUiThread(() -> {
+            AlertDialog d = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("CleanTube " + u.latest() + " is ready")
+                    .setMessage("Before the first update, Android needs a one-time OK:\n\n"
+                            + "1. On the next screen, turn on CleanTube\n"
+                            + "2. Press Back\n"
+                            + "3. Press Install\n"
+                            + "4. CleanTube closes. Open it again.\n\n"
+                            + "Later updates only need steps 3 and 4.")
+                    .setPositiveButton("Set up", (x, w) -> u.install(true))
+                    .setNegativeButton("Later", (x, w) -> u.skip())
+                    .setOnCancelListener(x -> u.skip())
+                    .setOnDismissListener(x -> {
+                        if (web != null) web.requestFocus();
+                    })
+                    .create();
+            d.show();
+            d.getButton(AlertDialog.BUTTON_POSITIVE).requestFocus();
+        });
     }
 
     // ---------- Phone remote ----------
@@ -192,6 +228,11 @@ public class MainActivity extends Activity implements PhoneRemote.Player {
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            // A release without its press belongs to another screen, like the Back that
+            // left Android's settings and reopened CleanTube. Ignore it.
+            if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) backPressed = true;
+            else if (e.getAction() == KeyEvent.ACTION_UP && !backPressed) return true;
+            if (e.getAction() == KeyEvent.ACTION_UP) backPressed = false;
             // Fallback 1: YouTube isn't showing (offline page, still loading) -> Back closes the app.
             if (!pageReady) {
                 if (e.getAction() == KeyEvent.ACTION_UP) finish();
@@ -237,6 +278,7 @@ public class MainActivity extends Activity implements PhoneRemote.Player {
     @Override
     protected void onDestroy() {
         if (remote != null) remote.stop();
+        if (updater != null) updater.stop();
         if (web != null) {
             web.destroy();
             web = null;

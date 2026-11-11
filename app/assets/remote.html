@@ -22,7 +22,7 @@ svg{width:20px;height:20px;fill:currentColor;flex:none}
 .dot.off i{background:var(--pri)}
 
 /* Now playing */
-.np{position:sticky;top:8px;z-index:3;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:14px;box-shadow:var(--shadow)}
+.np{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:14px;box-shadow:var(--shadow)}
 .np-head{display:flex;gap:10px;align-items:center}
 .np-head img{width:72px;height:40px;border-radius:6px;object-fit:cover;background:var(--soft);flex:none}
 .np-head small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -30,13 +30,25 @@ svg{width:20px;height:20px;fill:currentColor;flex:none}
 .seek{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .seek span{min-width:42px}.seek span:last-child{text-align:right}
 input[type=range]{flex:1;margin:0;accent-color:var(--pri);height:28px}
-.ctl{display:flex;justify-content:center;align-items:center;gap:22px;margin-top:4px}
+.ctl{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:4px}
 .ctl button{border:0;background:transparent;width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
 .ctl button:active{background:var(--soft)}
+.ctl button:disabled,.mini button:disabled{opacity:.3}
 .ctl .big{width:56px;height:56px;background:var(--pri);color:var(--pri-fg)}
 .ctl .big:active{background:var(--pri);opacity:.85}
 .ctl .big svg{width:28px;height:28px}
 .ctl .skip svg{width:30px;height:30px;font-family:system-ui,-apple-system,sans-serif}
+.ctl .trk svg{width:26px;height:26px}
+
+/* Small player, shown once the big one has scrolled out of view */
+.mini{position:fixed;top:calc(8px + env(safe-area-inset-top));left:0;right:0;z-index:3;padding:0 16px;pointer-events:none;opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .15s,transform .15s,visibility .15s}
+.mini.on{opacity:1;visibility:visible;transform:none}
+.mini>div{position:relative;overflow:hidden;max-width:528px;margin:0 auto;pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px 8px 8px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.mini img{width:56px;height:32px;border-radius:5px;object-fit:cover;background:var(--soft);flex:none;margin-right:4px}
+.mini b{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini button{border:0;background:transparent;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;padding:0;flex:none}
+.mini .big{background:var(--pri);color:var(--pri-fg)}
+.mini i{position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--pri)}
 
 /* Search */
 .sbox{position:relative}
@@ -117,6 +129,8 @@ nav .badge:empty{display:none}
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></symbol>
   <symbol id="i-up" viewBox="0 0 24 24"><path d="m12 7 7 7-1.4 1.4L12 9.8l-5.6 5.6L5 14l7-7Z"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.47.47 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.48.48 0 0 0-.12-.61l-2.01-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M6 5h2v14H6V5Zm3.5 7L19 5v14l-9.5-7Z"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M16 5h2v14h-2V5ZM5 5l9.5 7L5 19V5Z"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="m12 17-7-7 1.4-1.4 5.6 5.6 5.6-5.6L19 10l-7 7Z"/></symbol>
 </svg>
 
@@ -128,11 +142,20 @@ nav .badge:empty{display:none}
     <div class="np-head"><img id="npImg" alt=""><div class="meta"><small id="npState">Playing on TV</small><b id="npT"></b></div></div>
     <div class="seek"><span id="tNow">0:00</span><input type="range" id="seek" min="0" max="0" step="1" value="0" aria-label="Seek"><span id="tDur">0:00</span></div>
     <div class="ctl">
+      <button class="trk" id="prev" aria-label="Previous video"><svg><use href="#i-prev"/></svg></button>
       <button class="skip" id="back10" aria-label="Back 10 seconds"><svg viewBox="0 0 24 24"><path d="M12 5a8 8 0 1 1-8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 1.6 7.6 5 12 8.4Z"/><text x="12" y="16.2" font-size="7.4" font-weight="700" text-anchor="middle">10</text></svg></button>
       <button class="big" id="pp" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
       <button class="skip" id="fwd10" aria-label="Forward 10 seconds"><svg viewBox="0 0 24 24"><path d="M12 5a8 8 0 1 0 8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 1.6 16.4 5 12 8.4Z"/><text x="12" y="16.2" font-size="7.4" font-weight="700" text-anchor="middle">10</text></svg></button>
+      <button class="trk" id="next" aria-label="Next video"><svg><use href="#i-next"/></svg></button>
     </div>
   </section>
+  <div class="mini" id="mini"><div>
+    <img id="mnImg" alt=""><b id="mnT"></b>
+    <button id="mPrev" aria-label="Previous video"><svg><use href="#i-prev"/></svg></button>
+    <button class="big" id="mPp" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
+    <button id="mNext" aria-label="Next video"><svg><use href="#i-next"/></svg></button>
+    <i id="mnBar"></i>
+  </div></div>
 
   <section id="v-search">
     <div class="sbox"><svg><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search YouTube" aria-label="Search YouTube" enterkeyhint="search" autocomplete="off"><button class="clr" id="clr" aria-label="Clear" hidden><svg><use href="#i-x"/></svg></button></div>
@@ -279,7 +302,10 @@ function renderQueue(){
   $('quEmpty').hidden=n>0;
   $('qBadge').textContent=n||'';
   $('qTitle').textContent=n?n+(n===1?' video':' videos'):'Queue';
-  $('playAll').disabled=!n;$('saveBtn').disabled=!n;
+  // Red only when nothing is playing, so the pause button stays the one main action.
+  var pa=$('playAll'),on=S.current>=0;
+  pa.className='btn'+(on?' sm':' pri');pa.innerHTML=icon('play')+(on?'Play from start':'Play all');
+  pa.disabled=!n;$('saveBtn').disabled=!n;
 }
 
 function renderLists(){
@@ -325,20 +351,27 @@ function position(){return Math.min(S.dur||Infinity,S.pos+(S.advancing?(performa
 function renderNow(){
   var cur=S.queue[S.current];
   $('np').hidden=!cur;
+  miniCheck();
   if(!cur){stopTick();return}
-  var img=$('npImg');
-  if(img.dataset.id!==cur.id){img.dataset.id=cur.id;img.src=thumb(cur.id)}
-  $('npT').textContent=cur.title;
+  [$('npImg'),$('mnImg')].forEach(function(img){if(img.dataset.id!==cur.id){img.dataset.id=cur.id;img.src=thumb(cur.id)}});
+  $('npT').textContent=$('mnT').textContent=cur.title;
   $('npState').textContent=S.paused?'Paused on TV':'Playing on TV';
-  var pp=$('pp');pp.innerHTML=icon(S.paused?'play':'pause');pp.setAttribute('aria-label',S.paused?'Play':'Pause');
+  [$('pp'),$('mPp')].forEach(function(pp){pp.innerHTML=icon(S.paused?'play':'pause');pp.setAttribute('aria-label',S.paused?'Play':'Pause')});
+  $('next').disabled=$('mNext').disabled=S.current+1>=S.queue.length;
   $('seek').max=Math.floor(S.dur||0);
   $('tDur').textContent=S.dur?fmt(S.dur):'--:--';
   tick();
   // Move the slider once a second, only while the video is moving and the page is visible.
   if(S.advancing&&!document.hidden){if(!ticker)ticker=setInterval(tick,1000)}else stopTick();
 }
-function tick(){if(dragging)return;var p=position();$('seek').value=Math.floor(p);$('tNow').textContent=fmt(p)}
+function tick(){if(dragging)return;var p=position();$('seek').value=Math.floor(p);$('tNow').textContent=fmt(p);$('mnBar').style.width=(S.dur?p/S.dur*100:0)+'%'}
 function stopTick(){clearInterval(ticker);ticker=0}
+function togglePlay(){S.paused=!S.paused;S.advancing=false;renderNow();post({action:S.paused?'pause':'resume'})}
+function nextVideo(){if(S.current+1<S.queue.length)post({action:'play',index:S.current+1})}
+// Like a music player: back to the start of this video first, the one before it on a second tap.
+function prevVideo(){if(S.current>0&&position()<4)post({action:'play',index:S.current-1});else seekTo(0)}
+// The small player takes over when the big one is off screen.
+function miniCheck(){var np=$('np');$('mini').classList.toggle('on',!np.hidden&&np.getBoundingClientRect().bottom<8)}
 function seekTo(t){t=Math.max(0,Math.min(t,S.dur||t));S.pos=t;got=performance.now();tick();post({action:'seek',to:t})}
 
 // ---------- Search: debounced, cancels stale requests, remembers recent answers ----------
@@ -408,7 +441,7 @@ function useSug(key,r,fresh){
   sugFor=key;sugItems=list.slice(0,20);
   sugItems.forEach(function(v){shown.add(v.id)});
   renderSug();
-  if(fresh)window.scrollTo({top:$('sug').offsetTop-140,behavior:'smooth'});
+  if(fresh)window.scrollTo({top:$('sug').offsetTop-76,behavior:'smooth'});
 }
 function loadSug(fresh){
   if(!queueOpen())return;
@@ -447,7 +480,12 @@ $('seek').addEventListener('input',function(){dragging=true;$('tNow').textConten
 $('seek').addEventListener('change',function(){dragging=false;seekTo(+this.value)});
 $('back10').addEventListener('click',function(){seekTo(position()-10)});
 $('fwd10').addEventListener('click',function(){seekTo(position()+10)});
-$('pp').addEventListener('click',function(){S.paused=!S.paused;S.advancing=false;renderNow();post({action:S.paused?'pause':'resume'})});
+$('pp').addEventListener('click',togglePlay);$('mPp').addEventListener('click',togglePlay);
+$('prev').addEventListener('click',prevVideo);$('mPrev').addEventListener('click',prevVideo);
+$('next').addEventListener('click',nextVideo);$('mNext').addEventListener('click',nextVideo);
+// Tapping the small player's title brings the full controls back.
+$('mini').addEventListener('click',function(e){if(!e.target.closest('button'))window.scrollTo({top:0,behavior:'smooth'})});
+window.addEventListener('scroll',miniCheck,{passive:true});
 $('playAll').addEventListener('click',function(){post({action:'play',index:0})});
 $('saveForm').addEventListener('submit',function(e){
   e.preventDefault();var name=$('nm').value.trim();if(!name){$('nm').focus();return}
@@ -458,7 +496,7 @@ document.addEventListener('click',function(e){
   if(d.tab){
     document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('sel',x===b)});
     ['search','queue','lists','settings'].forEach(function(t){$('v-'+t).hidden=t!==d.tab});
-    window.scrollTo(0,0);
+    window.scrollTo(0,0);miniCheck();
     if(d.tab==='queue')loadSug(false);
     if(d.tab==='settings'&&S.update&&S.update.status==='idle')post({action:'checkUpdate'});
     return;

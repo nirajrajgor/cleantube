@@ -326,11 +326,12 @@ final class PhoneRemote {
             case "move": {
                 int from = c.optInt("from", -1), to = c.optInt("to", -1);
                 if (!inQueue(from) || !inQueue(to)) break;
-                Object x = queue.get(from);
-                queue.put(from, queue.get(to));
-                queue.put(to, x);
+                // Takes the video out and puts it at its new place; the ones between shift by one.
+                Object x = queue.remove(from);
+                queue = insert(queue, to, x);
                 if (current == from) current = to;
-                else if (current == to) current = from;
+                else if (from < current && current <= to) current--;
+                else if (to <= current && current < from) current++;
                 break;
             }
             case "play":
@@ -395,6 +396,17 @@ final class PhoneRemote {
 
     private boolean inQueue(int i) {
         return i >= 0 && i < queue.length();
+    }
+
+    /** A copy of the list with item at index i; later items move down by one. */
+    private static JSONArray insert(JSONArray list, int i, Object item) throws JSONException {
+        JSONArray out = new JSONArray();
+        for (int k = 0; k < list.length(); k++) {
+            if (k == i) out.put(item);
+            out.put(list.get(k));
+        }
+        if (i >= list.length()) out.put(item);
+        return out;
     }
 
     private void playAt(int i) {

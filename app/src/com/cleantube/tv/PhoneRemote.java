@@ -312,7 +312,13 @@ final class PhoneRemote {
         switch (action) {
             case "add": {
                 JSONObject v = cleanVideo(c.optJSONObject("video"));
-                if (v != null) queue.put(v);
+                if (v == null) break;
+                // "index" puts the video back where it was, to undo a remove.
+                int at = c.optInt("index", queue.length());
+                if (at < 0 || at > queue.length()) at = queue.length();
+                queue = insert(queue, at, v);
+                if (current >= at) current++;
+                else if (current < 0 && c.optBoolean("current")) current = at;
                 break;
             }
             case "remove": {

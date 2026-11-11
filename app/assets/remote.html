@@ -110,7 +110,10 @@ nav button svg{width:24px;height:24px}
 nav .badge{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--pri);color:var(--pri-fg);font-size:11px;font-weight:700;line-height:18px}
 nav .badge:empty{display:none}
 
-.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,8px);background:var(--fg);color:var(--bg);font-size:13px;padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:5;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,8px);background:var(--fg);color:var(--bg);font-size:13px;padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:5;white-space:nowrap;display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px)}
+.toast span{overflow:hidden;text-overflow:ellipsis}
+.toast.act{pointer-events:auto;padding:5px 5px 5px 14px}
+.toast button{flex:none;border:0;border-radius:999px;background:var(--bg);color:var(--fg);font-size:13px;font-weight:700;padding:6px 12px}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .banner{background:var(--pri);color:var(--pri-fg);font-size:13px;padding:8px 12px;border-radius:10px;margin-bottom:12px}
 
@@ -219,7 +222,13 @@ function fmt(t){t=Math.max(0,Math.floor(t||0));var h=Math.floor(t/3600),m=Math.f
 function thumb(id){return 'https://i.ytimg.com/vi/'+id+'/mqdefault.jpg'}
 function icon(n){return '<svg><use href="#i-'+n+'"/></svg>'}
 var toastT;
-function toast(t){var el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove('on')},1600)}
+function toast(t,label,fn){
+  var el=$('toast'),hide=function(){el.classList.remove('on','act')};
+  el.textContent='';el.appendChild(document.createElement('span')).textContent=t;
+  if(label){var b=el.appendChild(document.createElement('button'));b.textContent=label;b.onclick=function(){hide();fn()}}
+  el.classList.toggle('act',!!label);el.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(hide,label?5000:1600);
+}
 
 // Keyed list update: reuses existing rows (and their loaded images), moves them
 // into order, removes the rest. Only rows whose data changed are rewritten.
@@ -567,7 +576,11 @@ document.addEventListener('click',function(e){
   if(b.id==='upCheck'){post({action:'checkUpdate'});return}
   if(b.id==='upInstall'){post({action:'installUpdate'});toast('Starting update on TV');return}
   if(d.add!=null){var v=results.concat(sugItems).filter(function(x){return x.id===d.add})[0];if(!v)return;b.disabled=true;post({action:'add',video:v}).then(function(){toast('Added to queue')})}
-  else if(d.rm!=null)post({action:'remove',index:+d.rm});
+  else if(d.rm!=null){
+    // Undo puts the video back in its place, and back as the playing one if it was.
+    var i=+d.rm,gone=S.queue[i],was=i===S.current;if(!gone)return;
+    post({action:'remove',index:i}).then(function(){toast('Removed "'+gone.title+'"','Undo',function(){post({action:'add',video:gone,index:i,current:was})})});
+  }
   else if(d.pl!=null)post({action:'playPlaylist',name:S.playlists[+d.pl].name}).then(function(){toast('Playing on TV')});
   else if(d.del!=null){var p=S.playlists[+d.del];if(confirm('Delete playlist "'+p.name+'"?'))post({action:'deletePlaylist',name:p.name})}
   else if(d.play!=null&&+d.play!==S.current)post({action:'play',index:+d.play});

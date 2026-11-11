@@ -9,6 +9,7 @@
 :root{--bg:#f5f5f7;--card:#fff;--fg:#141416;--muted:#6c6c75;--line:#e3e3e8;--soft:#ececf0;--pri:#d42a2a;--pri-fg:#fff;--ok:#1f8a4c;--shadow:0 1px 2px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06)}
 @media (prefers-color-scheme:dark){:root{--bg:#0f0f11;--card:#1a1a1e;--fg:#ededf0;--muted:#9b9ba5;--line:#2b2b31;--soft:#25252b;--pri:#ef4444;--pri-fg:#fff;--ok:#3fbf75;--shadow:0 1px 2px rgba(0,0,0,.4)}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -22,7 +23,6 @@ svg{width:20px;height:20px;fill:currentColor;flex:none}
 
 /* Now playing */
 .np{position:sticky;top:8px;z-index:3;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:14px;box-shadow:var(--shadow)}
-.np[hidden]{display:none}
 .np-head{display:flex;gap:10px;align-items:center}
 .np-head img{width:72px;height:40px;border-radius:6px;object-fit:cover;background:var(--soft);flex:none}
 .np-head small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -93,7 +93,6 @@ nav .badge:empty{display:none}
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,8px);background:var(--fg);color:var(--bg);font-size:13px;padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:5;white-space:nowrap}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .banner{background:var(--pri);color:var(--pri-fg);font-size:13px;padding:8px 12px;border-radius:10px;margin-bottom:12px}
-.banner[hidden]{display:none}
 
 /* Settings */
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}

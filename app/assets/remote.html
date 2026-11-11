@@ -109,6 +109,7 @@ nav button.sel{color:var(--pri)}
 nav button svg{width:24px;height:24px}
 nav .badge{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--pri);color:var(--pri-fg);font-size:11px;font-weight:700;line-height:18px}
 nav .badge:empty{display:none}
+nav .pip{position:absolute;top:6px;left:calc(50% + 8px);width:10px;height:10px;border-radius:50%;background:var(--pri);border:2px solid var(--card)}
 
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,8px);background:var(--fg);color:var(--bg);font-size:13px;padding:8px 14px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:5;white-space:nowrap;display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px)}
 .toast span{overflow:hidden;text-overflow:ellipsis}
@@ -119,11 +120,20 @@ nav .badge:empty{display:none}
 
 /* Settings */
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
-.card h2{font-size:15px;margin:0 0 8px}
-.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--muted);padding:5px 0}
-.kv span:last-child{color:var(--fg);text-align:right}
-.kv .new{color:var(--pri);font-weight:600}
-.row2{display:flex;gap:8px;margin-top:12px}.row2 .btn{flex:1;justify-content:center}
+.card.todo{border-color:var(--pri)}
+.st{display:flex;align-items:center;gap:12px}
+.st b{display:block;font-size:16px}
+.st small{display:block;font-size:13px;color:var(--muted);margin-top:1px}
+.ic{position:relative;flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
+.ic::before{content:"";position:absolute;top:0;right:0;bottom:0;left:0;border-radius:50%;background:currentColor;opacity:.16}
+.ic.ok{color:var(--ok)}.ic.up{color:var(--pri)}
+.ic svg{width:22px;height:22px}
+.bar{height:6px;border-radius:3px;background:var(--soft);margin-top:14px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--pri);transition:width .3s}
+.steps{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:14px;counter-reset:step}
+.steps li{align-items:flex-start;padding:0;border:0;border-radius:0;background:none;min-height:0}
+.steps li::before{counter-increment:step;content:counter(step);flex:none;width:22px;height:22px;border-radius:50%;background:var(--soft);font-size:12px;font-weight:700;line-height:22px;text-align:center}
+.btn.wide{display:flex;justify-content:center;width:100%;margin-top:14px}
 .hint{font-size:13px;color:var(--muted);margin:10px 0 0}
 .hint.err{color:var(--pri)}
 </style>
@@ -139,6 +149,8 @@ nav .badge:empty{display:none}
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m9 16.2-4.2-4.2-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.47.47 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.48.48 0 0 0-.12-.61l-2.01-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M11 20V7.8l-5.6 5.6L4 12l8-8 8 8-1.4 1.4L13 7.8V20h-2Z"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><path d="M3 5h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-7v1.5h3v1.5H7v-1.5h3V18H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1 2v9h16V7H4Z"/></symbol>
   <symbol id="i-prev" viewBox="0 0 24 24"><path d="M6 5h2v14H6V5Zm3.5 7L19 5v14l-9.5-7Z"/></symbol>
   <symbol id="i-next" viewBox="0 0 24 24"><path d="M16 5h2v14h-2V5ZM5 5l9.5 7L5 19V5Z"/></symbol>
   <symbol id="i-grip" viewBox="0 0 24 24"><path d="M4 8h16v2H4V8Zm0 6h16v2H4v-2Z"/></symbol>
@@ -189,12 +201,13 @@ nav .badge:empty{display:none}
   </section>
 
   <section id="v-settings" hidden>
-    <div class="card">
-      <h2>App update</h2>
-      <div class="kv"><span>Installed</span><span id="upInst">-</span></div>
-      <div class="kv"><span>Latest</span><span id="upLatest">-</span></div>
-      <div class="row2"><button class="btn" id="upCheck" type="button">Check now</button><button class="btn pri" id="upInstall" type="button" hidden>Install on TV</button></div>
-      <p class="hint" id="upHint">After you tap Install, press OK on the TV remote to confirm.</p>
+    <div class="card" id="upCard">
+      <div class="st"><span class="ic" id="upIc"></span><div><b id="upT">CleanTube</b><small id="upSub"></small></div></div>
+      <div class="bar" id="upBar" hidden><i></i></div>
+      <ol class="steps" id="upSteps" hidden></ol>
+      <button class="btn pri wide" id="upInstall" type="button" hidden></button>
+      <button class="btn wide" id="upCheck" type="button">Check for updates</button>
+      <p class="hint" id="upHint" hidden></p>
     </div>
   </section>
 </div>
@@ -203,7 +216,7 @@ nav .badge:empty{display:none}
   <button data-tab="search" class="sel"><svg><use href="#i-search"/></svg>Search</button>
   <button data-tab="queue"><svg><use href="#i-queue"/></svg>Queue<span class="badge" id="qBadge"></span></button>
   <button data-tab="lists"><svg><use href="#i-list"/></svg>Playlists</button>
-  <button data-tab="settings"><svg><use href="#i-gear"/></svg>Settings</button>
+  <button data-tab="settings"><svg><use href="#i-gear"/></svg>Settings<span class="pip" id="upPip" hidden></span></button>
 </div></nav>
 <div class="toast" id="toast"></div>
 
@@ -335,29 +348,44 @@ function renderLists(){
   $('plsEmpty').hidden=S.playlists.length>0;
 }
 
-// What the TV is doing with an update, as the phone shows it.
-var UP={
-  idle:['-',''],checking:['Checking...',''],
-  uptodate:['{l}, up to date','You have the latest version.'],
-  available:['{l} available','After you tap Install, press OK on the TV remote to confirm.'],
-  setup:['{l} available','One-time setup on the TV: turn on CleanTube, press Back, then press Install. CleanTube closes, open it again.'],
-  downloading:['Downloading {p}%','Downloading on the TV...'],
-  confirm:['{l} ready','Press Install on the TV. CleanTube closes when done, open it again.'],
-  failed:['{l}','']
+// The Settings card shows one view per update status on the TV.
+// What you still have to do at the TV, for the statuses that wait on you.
+var STEPS={
+  setup:['Choose "Set up" on the TV.','Turn on CleanTube, then press Back.','Press Install.','CleanTube closes. Open it again.'],
+  confirm:['Press Install with the TV remote.','CleanTube closes. Open it again.']
 };
 function renderUpdate(){
   var u=S.update;if(!u)return;
-  var t=UP[u.status]||UP.idle,l=u.latest||'-';
-  $('upInst').textContent=u.installed;
-  $('upLatest').textContent=t[0].replace('{l}',l).replace('{p}',u.progress);
-  $('upLatest').className=u.status==='available'?'new':'';
-  var busy=u.status==='checking'||u.status==='downloading';
-  $('upCheck').disabled=busy;
-  $('upInstall').hidden=!(u.status==='available'||(u.status==='failed'&&u.latest&&newer(u.latest,u.installed)));
-  $('upInstall').disabled=busy;
-  $('upHint').textContent=u.error||t[1];
+  var s=u.status,l=u.latest,have='Version '+u.installed+' on this TV';
+  var can=!!l&&newer(l,u.installed),retry=s==='failed'&&can;
+  // icon, its color, headline, line under it
+  var v={
+    checking:['refresh','','Checking for updates...',have],
+    uptodate:['check','ok','CleanTube is up to date',have],
+    available:['arrow','up','Version '+l+' is available','This TV has '+u.installed],
+    setup:['tv','up','One-time setup on the TV','Android asks once, before the first update'],
+    downloading:['arrow','up','Updating to '+l,'Downloading on the TV, '+u.progress+'%'],
+    confirm:['tv','up','Finish on the TV',l+' is downloaded'],
+    failed:['x','up','Something went wrong',have]
+  }[s]||['gear','','CleanTube',have];
+  var steps=STEPS[s]||[];
+  $('upIc').className='ic '+v[1];$('upIc').innerHTML=icon(v[0]);
+  $('upT').textContent=v[2];$('upSub').textContent=v[3];
+  $('upCard').classList.toggle('todo',steps.length>0);
+  $('upBar').hidden=s!=='downloading';$('upBar').firstChild.style.width=u.progress+'%';
+  $('upSteps').hidden=!steps.length;
+  $('upSteps').innerHTML=steps.map(function(t){return '<li>'+t+'</li>'}).join('');
+  $('upInstall').hidden=!(s==='available'||retry);
+  $('upInstall').textContent=retry?'Try again':'Update to '+l;
+  // The quiet button stays as a way out when a step at the TV got lost.
+  $('upCheck').hidden=s==='available'||s==='downloading'||retry;
+  $('upCheck').disabled=s==='checking';
+  $('upCheck').textContent=s==='failed'?'Try again':steps.length?'Check again':'Check for updates';
+  var hint=u.error||(s==='available'?'You confirm once with the TV remote.':'');
+  $('upHint').textContent=hint;$('upHint').hidden=!hint;
   $('upHint').classList.toggle('err',!!u.error);
-  $('upHint').hidden=!$('upHint').textContent;
+  // A dot on the Settings tab while an update waits for you.
+  $('upPip').hidden=!(s==='available'||steps.length||retry);
 }
 function newer(a,b){a=a.split('.');b=b.split('.');for(var i=0;i<Math.max(a.length,b.length);i++){var x=parseInt(a[i])||0,y=parseInt(b[i])||0;if(x!==y)return x>y}return false}
 

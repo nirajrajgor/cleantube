@@ -1,6 +1,6 @@
 # CleanTube
 
-YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads removed.
+An ad-free YouTube app for Android TV, Google TV and Fire TV.
 
 ## Why CleanTube
 
@@ -11,14 +11,14 @@ YouTube's TV interface for Android TV, Google TV and Fire TV, with the ads remov
 ## What it does
 
 - Removes video ads and ad tiles in the feeds.
-- Unlocks 60fps and HD video.
+- Plays up to 4K and 60fps.
 - Switches the TV's refresh rate to match the video, when the TV supports it.
 - Voice search with the remote's microphone.
 - Phone remote: search, queue and playlists from your phone's browser.
 
 ## Phone remote
 
-Open the address shown in the TV's corner in your phone's browser. The phone and TV must be on the same Wi-Fi.
+Open the address shown in the TV's corner, such as `192.168.1.20:8080`, in your phone's browser. The phone and TV must be on the same Wi-Fi.
 
 <img src="docs/phone-remote.png" width="300" alt="Phone remote showing a queue of five videos, one playing on the TV">
 
@@ -95,7 +95,7 @@ When a new version is out, CleanTube shows Android's install prompt when it open
 
 The first time, Android asks once to allow installs from CleanTube. Turn it on, press Back, then press Install.
 
-Version 1.0 can't update itself. Install 1.1 the same way you installed CleanTube. Installing over it keeps your settings.
+Version 1.0 can't update itself. Install the newest version over it. Your settings are kept.
 
 ## Known limitations
 

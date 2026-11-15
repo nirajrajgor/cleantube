@@ -164,6 +164,64 @@
     });
   } catch (e) {}
 
+  // When the web view has no hardware decoder for a format, it decodes on the CPU.
+  // Measured on a Fire TV (Fire OS 7, web view 138): AV1 at 1080p took about 2.5 of
+  // 4 cores and playback hung, while the TV's own VP9 decoder played the same video at
+  // under half a core. The TV lists a hardware AV1 decoder, but the web view does not
+  // use it, so only the web view can answer this. Ask it about AV1 and VP9 at 1080p,
+  // 1440p and 4K ("power efficient" means hardware), and refuse what it would decode
+  // on the CPU. H.264 is never refused, so there is always something to play.
+  var HW_KEY = '__ctHwDecode';
+  var HW_SIZES = [[1920, 1080], [2560, 1440], [3840, 2160]];
+  var HW_PROBES = {
+    av1: ['video/mp4; codecs="av01.0.08M.08"', 'video/mp4; codecs="av01.0.12M.08"',
+      'video/mp4; codecs="av01.0.12M.08"'],
+    vp9: ['video/webm; codecs="vp09.00.40.08"', 'video/webm; codecs="vp09.00.50.08"',
+      'video/webm; codecs="vp09.00.50.08"']
+  };
+  // Tallest frame each codec decodes in hardware. YouTube can check formats before the
+  // answers arrive, so they are kept in localStorage. Until the first answers: no AV1,
+  // which costs one launch without it on TVs that have it, and VP9 at any size.
+  var hwMax = { av1: 0, vp9: 2160 };
+  try {
+    var savedHw = JSON.parse(localStorage.getItem(HW_KEY) || 'null');
+    if (savedHw && savedHw.av1 >= 0 && savedHw.vp9 >= 0) hwMax = savedHw;
+  } catch (e) {}
+  var softwareOnly = function (type, width, height) {
+    var codec = /av01/i.test(type) ? 'av1' : /vp0?9/i.test(type) ? 'vp9' : '';
+    if (!codec) return false;
+    // A decoder's limit applies to both sides, so a tall video needs the larger size.
+    var side = Math.max(width || 0, (height || 0) * 16 / 9);
+    return hwMax[codec] < (side > 2560 ? 2160 : side > 1920 ? 1440 : 1080);
+  };
+  if (navigator.mediaCapabilities && navigator.mediaCapabilities.decodingInfo) {
+    try {
+      var hwFound = { av1: 0, vp9: 0 }, hwWaiting = 0, hwFailed = false;
+      var probeHw = function (codec, i) {
+        hwWaiting++;
+        navigator.mediaCapabilities.decodingInfo({
+          type: 'media-source',
+          video: {
+            contentType: HW_PROBES[codec][i], width: HW_SIZES[i][0], height: HW_SIZES[i][1],
+            bitrate: 4000000, framerate: 30
+          }
+        }).then(function (r) {
+          if (r.supported && r.powerEfficient) hwFound[codec] = Math.max(hwFound[codec], HW_SIZES[i][1]);
+        }, function () {
+          hwFailed = true;
+        }).then(function () {
+          // A question that failed is not an answer: keep what we had.
+          if (--hwWaiting || hwFailed) return;
+          hwMax = hwFound;
+          try { localStorage.setItem(HW_KEY, JSON.stringify(hwFound)); } catch (e) {}
+        });
+      };
+      for (var hwCodec in HW_PROBES) {
+        for (var hwSize = 0; hwSize < HW_SIZES.length; hwSize++) probeHw(hwCodec, hwSize);
+      }
+    } catch (e) {}
+  }
+
   // YouTube's TV player tests the format check with impossible values (width=99999,
   // framerate=9999, eotf=catavision, ...). A real TV app says no to those. The web view
   // ignores the extra values and says yes to everything, so YouTube stops trusting it
@@ -183,6 +241,7 @@
       try {
         var parts = String(type).split(';');
         var plain = [parts[0]];
+        var size = {};
         for (var i = 1; i < parts.length; i++) {
           var eq = parts[i].indexOf('=');
           var k = parts[i].slice(0, eq < 0 ? undefined : eq).trim().toLowerCase();
@@ -190,6 +249,7 @@
           if (TYPE_LIMITS.hasOwnProperty(k)) {
             var n = Number(v);
             if (!(n >= 0) || n > TYPE_LIMITS[k]) return false;
+            size[k] = n;
           } else if (TYPE_VALUES.hasOwnProperty(k)) {
             if (TYPE_VALUES[k].indexOf(v) < 0) return false;
           } else {
@@ -198,6 +258,7 @@
         }
         // 10-bit codecs are YouTube's HDR streams; they stutter badly in the web view.
         if (/vp09\.0[23]\.|vp09\.\d\d\.\d\d\.1[02]|av01\.\d\.\d\d[MH]\.1[02]/i.test(type)) return false;
+        if (softwareOnly(String(type), size.width, size.height)) return false;
         return origIsType.call(this, plain.join(';'));
       } catch (e) {
         return origIsType.apply(this, arguments);
@@ -214,6 +275,9 @@
     var origDecodingInfo = mediaCaps.decodingInfo;
     mediaCaps.decodingInfo = function (config) {
       var v = config && config.video;
+      if (v && softwareOnly(String(v.contentType || ''), v.width, v.height)) {
+        return Promise.resolve({ supported: false, smooth: false, powerEfficient: false, configuration: config });
+      }
       var heavy = v && (v.framerate > 30 ? v.height > 1080 : v.height > 2160);
       return origDecodingInfo.apply(this, arguments).then(function (r) {
         if (!heavy || !r.supported) return r;

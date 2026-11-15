@@ -164,6 +164,46 @@
     });
   } catch (e) {}
 
+  // YouTube sizes its whole layout from the window size, on load and on each resize
+  // event: 12px text on a 960 px wide window, 16px on 1280. The web view reports a
+  // larger window when anything in the page is wider than the screen. Measured on a
+  // Hisense TV (web view 157): one 1280 px wide element turned a 960 px window into
+  // 1280, and on the next resize event YouTube switched to 16px. That layout is itself
+  // 1280 px wide, so it stayed 1.33 times too wide with the right third off screen.
+  // A Fire TV (web view 138) showed the same 1.33 in photos. Whether it got there the
+  // same way is not confirmed. In the Hisense test, minimum-scale=1 stopped the window
+  // growing past the screen. YouTube's TV page has no viewport tag of its own.
+  // This script can run before the page has a <head>, so wait for one. If the tag
+  // lands after the window has already grown, the web view applies it only at the
+  // next layout and YouTube keeps its text size. Force a layout, then tell YouTube
+  // the window changed.
+  try {
+    var pinViewport = function () {
+      if (document.querySelector('meta[name="viewport"][data-cleantube]')) return true;
+      if (!document.head) return false;
+      var widthBefore = window.innerWidth;
+      var meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.setAttribute('data-cleantube', '');
+      meta.content = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1';
+      document.head.appendChild(meta);
+      if (document.body) {
+        var probe = document.createElement('div');
+        document.body.appendChild(probe);
+        var widthAfter = window.innerWidth;
+        document.body.removeChild(probe);
+        if (widthAfter !== widthBefore) window.dispatchEvent(new Event('resize'));
+      }
+      return true;
+    };
+    if (location.pathname.indexOf('/tv') === 0 && !pinViewport()) {
+      var headWatch = new MutationObserver(function () {
+        if (pinViewport()) headWatch.disconnect();
+      });
+      headWatch.observe(document, { childList: true, subtree: true });
+    }
+  } catch (e) {}
+
   // When the web view has no hardware decoder for a format, it decodes on the CPU.
   // Measured on a Fire TV (Fire OS 7, web view 138): AV1 at 1080p took about 2.5 of
   // 4 cores and playback hung, while the TV's own VP9 decoder played the same video at

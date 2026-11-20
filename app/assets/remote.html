@@ -136,6 +136,9 @@ nav .pip{position:absolute;top:6px;left:calc(50% + 8px);width:10px;height:10px;b
 .btn.wide{display:flex;justify-content:center;width:100%;margin-top:14px}
 .hint{font-size:13px;color:var(--muted);margin:10px 0 0}
 .hint.err{color:var(--pri)}
+#hisClear{margin-top:12px}
+#his li{cursor:pointer}
+#his .thumb::after{content:"";position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:rgba(0,0,0,.6) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M8 5v14l11-7z'/%3E%3C/svg%3E") center/16px no-repeat}
 </style>
 </head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -209,6 +212,10 @@ nav .pip{position:absolute;top:6px;left:calc(50% + 8px);width:10px;height:10px;b
       <button class="btn wide" id="upCheck" type="button">Check for updates</button>
       <p class="hint" id="upHint" hidden></p>
     </div>
+    <div class="sec"><div><b>Recently watched</b><small>The last 50 videos on this TV</small></div></div>
+    <ul id="his"></ul>
+    <div class="empty" id="hisEmpty">Videos you watch on the TV show up here.</div>
+    <button class="btn wide" id="hisClear" type="button">Clear history</button>
   </section>
 </div>
 
@@ -285,7 +292,9 @@ function apply(s){
   S=s;got=performance.now();online(true);
   var ids=s.queue.map(function(v){return v.id});
   var q=JSON.stringify([ids,s.current]);
-  if(q!==sig.queue){dragEnd(null,true);sig.queue=q;renderQueue();renderResults();renderSug();autoSuggest()}
+  if(q!==sig.queue){dragEnd(null,true);sig.queue=q;renderQueue();renderResults();renderSug();autoSuggest();renderHistory()}
+  var h=JSON.stringify(s.history||[]);
+  if(h!==sig.hist){sig.hist=h;renderHistory()}
   var p=JSON.stringify(s.playlists);
   if(p!==sig.lists){sig.lists=p;renderLists()}
   var u=JSON.stringify(s.update||null);
@@ -346,6 +355,32 @@ function renderLists(){
     ul.appendChild(li);
   });
   $('plsEmpty').hidden=S.playlists.length>0;
+}
+
+// Recently watched: tapping a row plays it right after the current video, + adds it
+// to the end of the queue, x takes it out of the history.
+function ago(t){
+  var m=Math.floor((Date.now()-t)/60000),h=Math.floor(m/60),d=Math.floor(h/24);
+  if(m<1)return 'Just now';if(m<60)return m+' min ago';if(h<24)return h+'h ago';
+  if(d<2)return 'Yesterday';if(d<7)return d+' days ago';
+  return new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+}
+function renderHistory(){
+  var list=S.history||[],inQ={};S.queue.forEach(function(v){inQ[v.id]=1});
+  sync($('his'),list,function(v){return v.id},function(row,v){
+    var when=ago(v.at),sg=[v.id,v.title,v.length,when,inQ[v.id]?1:0].join();
+    if(row._sig===sg)return sg;
+    setVideo(row,v);
+    if(!v.title)row.querySelector('b').textContent='YouTube video';
+    row.querySelector('span').textContent=(v.channel?v.channel+' \u00b7 ':'')+when;
+    row.dataset.hplay=v.id;
+    row.querySelector('.act').innerHTML=
+      (inQ[v.id]?'<button class="ib add done" disabled aria-label="In queue">'+icon('check')+'</button>'
+        :'<button class="ib" data-add="'+v.id+'" aria-label="Add to queue">'+icon('plus')+'</button>')+
+      '<button class="tb" data-hrm="'+v.id+'" aria-label="Remove from history">'+icon('x')+'</button>';
+    return sg;
+  });
+  $('hisClear').hidden=!list.length;$('hisEmpty').hidden=list.length>0;
 }
 
 // The Settings card shows one view per update status on the TV.
@@ -591,19 +626,22 @@ $('saveForm').addEventListener('submit',function(e){
   $('nm').value='';$('nm').blur();post({action:'save',name:name}).then(function(){toast('Saved "'+name+'"')});
 });
 document.addEventListener('click',function(e){
-  var b=e.target.closest('button,li[data-play]');if(!b)return;var d=b.dataset;
+  var b=e.target.closest('button,li[data-play],li[data-hplay]');if(!b)return;var d=b.dataset;
   if(d.tab){
     document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('sel',x===b)});
     ['search','queue','lists','settings'].forEach(function(t){$('v-'+t).hidden=t!==d.tab});
     window.scrollTo(0,0);miniCheck();
     if(d.tab==='queue')loadSug(false);
-    if(d.tab==='settings'&&S.update&&S.update.status==='idle')post({action:'checkUpdate'});
+    if(d.tab==='settings'){renderHistory();if(S.update&&S.update.status==='idle')post({action:'checkUpdate'})}
     return;
   }
   if(b.id==='sugRefresh'){if(S.queue.length)loadSug(true);return}
   if(b.id==='upCheck'){post({action:'checkUpdate'});return}
   if(b.id==='upInstall'){post({action:'installUpdate'});toast('Starting update on TV');return}
-  if(d.add!=null){var v=results.concat(sugItems).filter(function(x){return x.id===d.add})[0];if(!v)return;b.disabled=true;post({action:'add',video:v}).then(function(){toast('Added to queue')})}
+  if(b.id==='hisClear'){if(confirm('Clear the watch history on this TV?'))post({action:'clearHistory'});return}
+  if(d.hrm!=null){post({action:'removeHistory',id:d.hrm});return}
+  if(d.hplay!=null){post({action:'playHistory',id:d.hplay}).then(function(){toast('Playing on TV')});return}
+  if(d.add!=null){var v=results.concat(sugItems,S.history||[]).filter(function(x){return x.id===d.add})[0];if(!v)return;b.disabled=true;post({action:'add',video:v}).then(function(){toast('Added to queue')})}
   else if(d.rm!=null){
     // Undo puts the video back in its place, and back as the playing one if it was.
     var i=+d.rm,gone=S.queue[i],was=i===S.current;if(!gone)return;

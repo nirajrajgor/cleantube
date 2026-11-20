@@ -49,7 +49,10 @@ final class PhoneRemote {
     private static final int FIRST_PORT = 8080;
     // Commands that change the queue or playlists, so they are written to storage.
     private static final Set<String> SAVED = new HashSet<>(java.util.Arrays.asList(
-            "add", "remove", "move", "save", "playPlaylist", "deletePlaylist"));
+            "add", "remove", "move", "save", "playPlaylist", "deletePlaylist",
+            "playHistory", "removeHistory", "clearHistory"));
+    // Videos opened on the TV, newest first. Older ones drop off.
+    private static final int HISTORY_SIZE = 50;
     private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
     private static final Charset UTF8 = Charset.forName("UTF-8");
     // Signed-out search through YouTube's web API. No cookies are sent, so no account is used.
@@ -75,6 +78,7 @@ final class PhoneRemote {
     // Guarded by this.
     private JSONArray queue;
     private JSONArray playlists;   // [{name, items: [video]}]
+    private JSONArray history;     // [video + at], newest first
     private int current = -1;      // index in queue playing on the TV, -1 = none
     private boolean paused;
     private long playStarted;      // when we last asked the TV to play, for onWatching
@@ -92,6 +96,7 @@ final class PhoneRemote {
         prefs = context.getSharedPreferences("remote", Context.MODE_PRIVATE);
         queue = readArray("queue");
         playlists = readArray("playlists");
+        history = readArray("history");
     }
 
     // ---------- Server ----------
@@ -298,7 +303,7 @@ final class PhoneRemote {
                         .put("count", p.getJSONArray("items").length()));
             }
             return new JSONObject().put("queue", queue).put("current", current)
-                    .put("paused", paused).put("playlists", lists)
+                    .put("paused", paused).put("playlists", lists).put("history", history)
                     .put("pos", position()).put("dur", dur).put("advancing", advancing && current >= 0)
                     .put("rate", rate)
                     .put("update", updater.state()).toString();
@@ -389,12 +394,34 @@ final class PhoneRemote {
             case "deletePlaylist":
                 removePlaylist(c.optString("name"));
                 break;
+            case "playHistory": {
+                // Plays right after the current video, so the queue goes on after it.
+                JSONObject v = findVideo(history, c.optString("id"));
+                if (v == null) break;
+                int at = current >= 0 ? current + 1 : queue.length();
+                queue = insert(queue, at, cleanVideo(v));
+                playAt(at);
+                break;
+            }
+            case "removeHistory": {
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < history.length(); i++) {
+                    JSONObject h = history.optJSONObject(i);
+                    if (h != null && !h.optString("id").equals(c.optString("id"))) out.put(h);
+                }
+                history = out;
+                break;
+            }
+            case "clearHistory":
+                history = new JSONArray();
+                break;
             default:
                 break;
         }
         if (SAVED.contains(action)) {
             prefs.edit().putString("queue", queue.toString())
-                    .putString("playlists", playlists.toString()).apply();
+                    .putString("playlists", playlists.toString())
+                    .putString("history", history.toString()).apply();
         }
         changed();
         return state();
@@ -432,6 +459,14 @@ final class PhoneRemote {
 
     private String currentId() {
         return inQueue(current) ? queue.optJSONObject(current).optString("id") : "";
+    }
+
+    private static JSONObject findVideo(JSONArray list, String id) {
+        for (int i = 0; i < list.length(); i++) {
+            JSONObject v = list.optJSONObject(i);
+            if (v != null && v.optString("id").equals(id)) return v;
+        }
+        return null;
     }
 
     private int findPlaylist(String name) throws JSONException {
@@ -494,6 +529,7 @@ final class PhoneRemote {
      * with its next song. Any other move away means the queue stops following the TV.
      */
     synchronized String onWatching(String id) {
+        remember(id);
         // Right after we start a video, YouTube can still pass through other pages
         // (e.g. home after the previous video ends). Give it a few seconds.
         if (SystemClock.elapsedRealtime() - playStarted < 5000) return "";
@@ -506,6 +542,63 @@ final class PhoneRemote {
         current = -1;
         changed();
         return "";
+    }
+
+    /**
+     * Puts a video that opened on the TV at the top of the history. A video picked
+     * with the TV remote isn't in the queue, so its title is looked up once.
+     */
+    private void remember(String id) {
+        if (!VIDEO_ID.matcher(id).matches()) return;
+        JSONObject top = history.optJSONObject(0);
+        if (top != null && top.optString("id").equals(id)) return;
+        try {
+            JSONObject v = findVideo(history, id);
+            if (v == null) v = findVideo(queue, id);
+            v = v != null ? cleanVideo(v) : new JSONObject().put("id", id).put("title", "")
+                    .put("channel", "").put("length", "");
+            v.put("at", System.currentTimeMillis());
+            JSONArray out = new JSONArray().put(v);
+            for (int i = 0; i < history.length() && out.length() < HISTORY_SIZE; i++) {
+                JSONObject h = history.optJSONObject(i);
+                if (h != null && !h.optString("id").equals(id)) out.put(h);
+            }
+            history = out;
+            saveHistory();
+            if (v.optString("title").isEmpty()) pool.execute(() -> lookUp(id));
+        } catch (JSONException ignored) {}
+    }
+
+    /** Title and channel from YouTube's oEmbed, which needs no API key. */
+    private void lookUp(String id) {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL("https://www.youtube.com/oembed?format=json"
+                    + "&url=https://www.youtube.com/watch?v=" + id).openConnection();
+            JSONObject o;
+            try {
+                c.setConnectTimeout(10000);
+                c.setReadTimeout(10000);
+                if (c.getResponseCode() != 200) return;
+                try (InputStream in = c.getInputStream()) {
+                    o = new JSONObject(new String(MainActivity.readAll(in), UTF8));
+                }
+            } finally {
+                c.disconnect();
+            }
+            synchronized (this) {
+                JSONObject v = findVideo(history, id);
+                if (v == null) return;
+                v.put("title", cut(o.optString("title"), 200)).put("channel", cut(o.optString("author_name"), 100));
+                saveHistory();
+                changed();
+            }
+        } catch (Exception ignored) {
+            // The row shows without a title.
+        }
+    }
+
+    private void saveHistory() {
+        prefs.edit().putString("history", history.toString()).apply();
     }
 
     /** True when our song was in its last 30 seconds, where YouTube shows "Up next". */
@@ -529,7 +622,22 @@ final class PhoneRemote {
         advancing = isAdvancing;
         posAt = SystemClock.elapsedRealtime();
         if (current >= 0) paused = isPaused;
+        // A video picked on the TV has no length yet: take it from the player.
+        JSONObject top = history.optJSONObject(0);
+        if (top != null && duration > 0 && top.optString("length").isEmpty()) {
+            try {
+                top.put("length", clock(duration));
+                saveHistory();
+            } catch (JSONException ignored) {}
+        }
         changed();
+    }
+
+    /** 245 seconds as "4:05", 3725 as "1:02:05". Rounds up, as YouTube does. */
+    static String clock(double seconds) {
+        int t = (int) Math.ceil(seconds), h = t / 3600, m = t / 60 % 60, s = t % 60;
+        return h > 0 ? String.format(Locale.US, "%d:%02d:%02d", h, m, s)
+                : String.format(Locale.US, "%d:%02d", m, s);
     }
 
     // ---------- Search ----------

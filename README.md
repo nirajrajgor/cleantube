@@ -25,8 +25,9 @@ Open the address shown in the TV's corner, such as `192.168.1.20:8080`, in your 
 - Search YouTube and queue videos. The TV plays them in order.
 - Reorder, pause, seek, and save the queue as a playlist.
 - Get suggestions based on the queue.
+- Replay the last 50 videos watched on the TV from Settings.
 
-No app or login needed. Anyone on your Wi-Fi can use it. Playlists are saved on the TV.
+No app or login needed. Anyone on your Wi-Fi can use it. Playlists and watch history are saved on the TV.
 
 ## Supported devices
 

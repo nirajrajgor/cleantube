@@ -392,8 +392,18 @@
     for (var i = 0; i < vs.length; i++) if (vs[i].currentSrc) return vs[i];
     return vs[0] || null;
   };
+  // Opening the video that is already on screen changes nothing, so start it over instead.
+  var restart = function () {
+    var v = mainVideo();
+    if (!v) return;
+    v.currentTime = 0;
+    v.play();
+  };
   window.__ctRemote = {
-    play: function (id) { location.hash = '#/watch?v=' + id; },
+    play: function (id) {
+      if (watchId() === id) restart();
+      else location.hash = '#/watch?v=' + id;
+    },
     pause: function () { var v = mainVideo(); if (v) v.pause(); },
     resume: function () { var v = mainVideo(); if (v) v.play(); },
     seek: function (t) {
@@ -414,7 +424,8 @@
       try { next = String(Native.videoEnded(id) || ''); } catch (err) {}
       if (!/^[\w-]{11}$/.test(next)) return;
       e.stopImmediatePropagation();
-      location.replace('#/watch?v=' + next);
+      if (next === id) restart();
+      else location.replace('#/watch?v=' + next);
     }, true);
     // If YouTube's autoplay replaced a queued song at its end, the app answers with
     // the next queued song, and we open that instead.

@@ -634,9 +634,10 @@ final class PhoneRemote {
         advancing = isAdvancing;
         posAt = SystemClock.elapsedRealtime();
         if (current >= 0) paused = isPaused;
-        // A video picked on the TV has no length yet: take it from the player.
+        // A video picked on the TV has no length yet: take it from the player once it
+        // plays. A pause right after a video change can still carry the old video's length.
         JSONObject v = findVideo(history, watching);
-        if (v != null && duration > 0 && v.optString("length").isEmpty()) {
+        if (v != null && isAdvancing && duration > 0 && v.optString("length").isEmpty()) {
             try {
                 v.put("length", clock(duration));
                 saveHistory();

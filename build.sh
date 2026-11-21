@@ -4,8 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION_CODE="${VERSION_CODE:-5}"
-VERSION_NAME="${VERSION_NAME:-1.4}"
+VERSION_CODE="${VERSION_CODE:-6}"
+VERSION_NAME="${VERSION_NAME:-1.5}"
 
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
 TOOLS="${TOOLS:?set TOOLS in .env to the folder with aapt2, android.jar, d8.jar, apksigner.jar}"

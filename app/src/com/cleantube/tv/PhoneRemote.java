@@ -538,12 +538,18 @@ final class PhoneRemote {
      * with its next song. Any other move away means the queue stops following the TV.
      */
     synchronized String onWatching(String id) {
-        // Only a newly opened video counts. The same one again is the same viewing.
-        if (!id.equals(watching)) {
+        String next = follow(id);
+        // Only a newly opened video counts, and not one the queue replaces right away.
+        // The same one again is the same viewing.
+        if (next.isEmpty() && !id.equals(watching)) {
             watching = id;
             remember(id);
             changed();   // phones show the new history row even if nothing else changes
         }
+        return next;
+    }
+
+    private String follow(String id) {
         // Right after we start a video, YouTube can still pass through other pages
         // (e.g. home after the previous video ends). Give it a few seconds.
         if (SystemClock.elapsedRealtime() - playStarted < 5000) return "";

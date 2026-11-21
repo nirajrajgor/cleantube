@@ -79,6 +79,7 @@ final class PhoneRemote {
     private JSONArray queue;
     private JSONArray playlists;   // [{name, items: [video]}]
     private JSONArray history;     // [video + at], newest first
+    private String watching = "";  // video on the TV's watch page, "" when not watching
     private int current = -1;      // index in queue playing on the TV, -1 = none
     private boolean paused;
     private long playStarted;      // when we last asked the TV to play, for onWatching
@@ -537,7 +538,11 @@ final class PhoneRemote {
      * with its next song. Any other move away means the queue stops following the TV.
      */
     synchronized String onWatching(String id) {
-        remember(id);
+        // Only a newly opened video counts. The same one again is the same viewing.
+        if (!id.equals(watching)) {
+            watching = id;
+            remember(id);
+        }
         // Right after we start a video, YouTube can still pass through other pages
         // (e.g. home after the previous video ends). Give it a few seconds.
         if (SystemClock.elapsedRealtime() - playStarted < 5000) return "";
@@ -558,8 +563,6 @@ final class PhoneRemote {
      */
     private void remember(String id) {
         if (!VIDEO_ID.matcher(id).matches()) return;
-        JSONObject top = history.optJSONObject(0);
-        if (top != null && top.optString("id").equals(id)) return;
         try {
             JSONObject v = findVideo(history, id);
             if (v == null) v = findVideo(queue, id);
@@ -631,10 +634,10 @@ final class PhoneRemote {
         posAt = SystemClock.elapsedRealtime();
         if (current >= 0) paused = isPaused;
         // A video picked on the TV has no length yet: take it from the player.
-        JSONObject top = history.optJSONObject(0);
-        if (top != null && duration > 0 && top.optString("length").isEmpty()) {
+        JSONObject v = findVideo(history, watching);
+        if (v != null && duration > 0 && v.optString("length").isEmpty()) {
             try {
-                top.put("length", clock(duration));
+                v.put("length", clock(duration));
                 saveHistory();
             } catch (JSONException ignored) {}
         }

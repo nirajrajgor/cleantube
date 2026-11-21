@@ -542,6 +542,7 @@ final class PhoneRemote {
         if (!id.equals(watching)) {
             watching = id;
             remember(id);
+            changed();   // phones show the new history row even if nothing else changes
         }
         // Right after we start a video, YouTube can still pass through other pages
         // (e.g. home after the previous video ends). Give it a few seconds.

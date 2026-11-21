@@ -4,7 +4,7 @@ An ad-free YouTube app for Android TV, Google TV and Fire TV.
 
 ## Why CleanTube
 
-- **Tiny.** The APK is under 70 KB.
+- **Tiny.** The APK is under 75 KB.
 - **Three permissions.** Internet, the microphone for voice search, and installing its own updates.
 - **No tracking.** No analytics and no third-party libraries. It only connects to YouTube, Google, and GitHub for updates.
 

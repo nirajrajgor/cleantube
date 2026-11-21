@@ -396,10 +396,18 @@ final class PhoneRemote {
                 break;
             case "playHistory": {
                 // Plays right after the current video, so the queue goes on after it.
-                JSONObject v = findVideo(history, c.optString("id"));
+                // The playing or next video plays from its own place, not a copy.
+                String id = c.optString("id");
+                JSONObject v = findVideo(history, id);
                 if (v == null) break;
+                if (id.equals(currentId())) {
+                    playAt(current);
+                    break;
+                }
                 int at = current >= 0 ? current + 1 : queue.length();
-                queue = insert(queue, at, cleanVideo(v));
+                if (!inQueue(at) || !id.equals(queue.optJSONObject(at).optString("id"))) {
+                    queue = insert(queue, at, cleanVideo(v));
+                }
                 playAt(at);
                 break;
             }

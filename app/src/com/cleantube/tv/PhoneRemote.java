@@ -540,8 +540,9 @@ final class PhoneRemote {
     synchronized String onWatching(String id) {
         String next = follow(id);
         // Only a newly opened video counts, and not one the queue replaces right away.
+        // When the queue picks the same video, the page stays put, so it counts too.
         // The same one again is the same viewing.
-        if (next.isEmpty() && !id.equals(watching)) {
+        if ((next.isEmpty() || next.equals(id)) && !id.equals(watching)) {
             watching = id;
             remember(id);
             changed();   // phones show the new history row even if nothing else changes
